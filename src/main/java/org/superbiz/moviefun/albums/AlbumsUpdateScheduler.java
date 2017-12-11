@@ -20,12 +20,10 @@ public class AlbumsUpdateScheduler {
 
     private final AlbumsUpdater albumsUpdater;
     private final JdbcTemplate jdbcTemplate;
-    private DataSource dataSource;
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     public AlbumsUpdateScheduler(AlbumsUpdater albumsUpdater, DataSource dataSource) {
         this.albumsUpdater = albumsUpdater;
-        this.dataSource = dataSource;
         this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
@@ -36,7 +34,7 @@ public class AlbumsUpdateScheduler {
         try {
             logger.debug("Starting albums update");
 
-            if (startAlbumSchedulerTask(currentTime)) { //get current timestamp here
+            if (startAlbumSchedulerTask()) {
                 logger.debug("Starting albums update");
                 albumsUpdater.update();
                 logger.debug("Finished albums update");
@@ -52,12 +50,14 @@ public class AlbumsUpdateScheduler {
         }
     }
 
-    private boolean startAlbumSchedulerTask(currentTime) { //pass in timestamp
-        String now = currentTime; //now timestamp
-        String lastUpdated; //compare with SQL DB last timestamp (refer to .ddl)
+    private boolean startAlbumSchedulerTask() {
+        int updatedRows = jdbcTemplate.update(
+                "UPDATE album_scheduler_task" +
+                        " SET started_at = now()" +
+                        " WHERE started_at IS NULL" +
+                        " OR started_at < date_sub(now(), INTERVAL 2 MINUTE)"
+        );
 
-        //compare timestamps for 2 min
-        //return true if gretaer than 2 min
-        return true;
+        return updatedRows > 0;
     }
 }
